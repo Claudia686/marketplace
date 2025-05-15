@@ -37,8 +37,9 @@ contract Marketplace {
      * @notice Emits when refunded
      * @notice Emits when the owner withdraws funds
      */
-    event itemSold(address indexed buyer, uint256 indexed id, uint256 amount);
-    event itemListed(string name, uint256 cost, uint256 quantity);
+    event InvalidAddresstemSold(address indexed buyer, uint256 indexed id, uint256 amount);
+    event ItemListed(string name, uint256 cost, uint256 quantity);
+    event ItemSold(address indexed buyer, uint256 indexed id, uint256 amount);
     event Refunded(address indexed buyer, uint256 indexed id, uint256 qty, uint256 amount);
     event withdrawn(address indexed owner, uint256 amount);
 
@@ -99,7 +100,7 @@ contract Marketplace {
     function listItem(string memory _name, uint256 _cost, uint256 _quantity) public onlyOwner {
         items[itemCount] = Item(_name, _cost, _quantity);
         itemCount++;
-        emit itemListed(_name, _cost, _quantity);
+        emit ItemListed(_name, _cost, _quantity);
     }
 
     /**
@@ -137,7 +138,7 @@ contract Marketplace {
 
         item.quantity -= qty;
         balances[msg.sender] += msg.value;
-        emit itemSold(msg.sender, _id, totalCost);
+        emit ItemSold(msg.sender, _id, totalCost);
     }
 
     /**
@@ -183,7 +184,6 @@ contract Marketplace {
     function withdraw() public onlyOwner {
         uint256 withdrawBalance = address(this).balance;
 
-        // check if there is any balance
         if (withdrawBalance == 0) {
             revert NothingToWithdraw();
         }
