@@ -39,6 +39,7 @@ contract Marketplace {
      */
     event InvalidAddresstemSold(address indexed buyer, uint256 indexed id, uint256 amount);
     event ItemListed(string name, uint256 cost, uint256 quantity);
+    
     event ItemSold(address indexed buyer, uint256 indexed id, uint256 amount);
     event Refunded(address indexed buyer, uint256 indexed id, uint256 qty, uint256 amount);
     event withdrawn(address indexed owner, uint256 amount);
@@ -110,8 +111,8 @@ contract Marketplace {
      * @notice Reverts if the item id is invalid
      * @notice The qty multiply with item cost
      * @notice Reverts if the ETH sent is not enough
-     * @notice Reverts if there is not enough items in stock
      * @notice Reverts if items are sold
+     * @notice Reverts if there is not enough items in stock
      * @notice Reduces the number of items available in stock
      * @notice Updates user balance
      * @notice Emits an event when item was bought
@@ -128,12 +129,12 @@ contract Marketplace {
             revert NotEnoughEth();
         }
 
-        if (item.quantity < qty) {
-            revert NotEnoughItemInStock();
+            if (item.quantity == 0) {
+            revert ItemsoldOut();
         }
 
-        if (item.quantity == 0) {
-            revert ItemsoldOut();
+        if (item.quantity < qty) {
+            revert NotEnoughItemInStock();
         }
 
         item.quantity -= qty;

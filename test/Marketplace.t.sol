@@ -85,21 +85,41 @@ contract MarketplaceTest is Test {
     // Test buyItem Failure
     // ---------------------
 
-    function test_Revert_InavidId() public {
+       modifier list() {
         vm.prank(OWNER);
-        marketplace.listItem("Apple", 1e18, 10);
+        marketplace.listItem("Apple", 2e18, 1);
+        _;
+    }
+
+    function test_Revert_InavidId() public list {
         vm.prank(BUYER);
         vm.deal(BUYER, 2e18);
         vm.expectRevert(Marketplace.InvalidId.selector);
         marketplace.buyItem{value: 2e18}(2, 2);
     }
 
-    function test_Revert_InvalidCost() public {
-        vm.prank(OWNER);
-        marketplace.listItem("Apple", 1e18, 10);
+    function test_Revert_InvalidCost() public list {
         vm.prank(BUYER);
         vm.deal(BUYER, 0);
         vm.expectRevert(Marketplace.NotEnoughEth.selector);
         marketplace.buyItem{value: 0}(0, 1);
     }
+
+    function test_Revert_NotEnoughItemInStock() public list {
+        vm.prank(BUYER);
+        vm.deal(BUYER, 4e18);
+        vm.expectRevert(Marketplace.NotEnoughItemInStock.selector);
+        marketplace.buyItem{value: 4e18}(0, 2);
+    }
+
+    function test_Revert_ItemsoldOut() public list {
+        vm.deal(BUYER, 15e18);
+        vm.startPrank(BUYER);
+        marketplace.buyItem{value: 2e18}(0, 1);
+        
+        // Try buying again, now it's sold out
+        vm.expectRevert(Marketplace.ItemsoldOut.selector);
+        marketplace.buyItem{value: 2e18}(0, 1);
+        vm.stopPrank();
+    }   
 }
