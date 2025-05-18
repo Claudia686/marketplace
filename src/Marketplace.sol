@@ -39,7 +39,7 @@ contract Marketplace {
      */
     event InvalidAddresstemSold(address indexed buyer, uint256 indexed id, uint256 amount);
     event ItemListed(string name, uint256 cost, uint256 quantity);
-    
+
     event ItemSold(address indexed buyer, uint256 indexed id, uint256 amount);
     event Refunded(address indexed buyer, uint256 indexed id, uint256 qty, uint256 amount);
     event withdrawn(address indexed owner, uint256 amount);
@@ -129,7 +129,7 @@ contract Marketplace {
             revert NotEnoughEth();
         }
 
-            if (item.quantity == 0) {
+        if (item.quantity == 0) {
             revert ItemsoldOut();
         }
 
@@ -154,7 +154,7 @@ contract Marketplace {
      * @notice Emits an event if refunded
      */
     function refund(uint256 _id, uint256 _qty) public {
-        if (balances[msg.sender] == 0) {
+        if (balances[msg.sender] < 1) {
             revert NothingToRefund();
         }
 

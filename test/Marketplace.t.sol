@@ -16,9 +16,27 @@ contract MarketplaceTest is Test {
     }
 
     // ---------------------
+    // list modifier
+    // ---------------------
+    modifier list() {
+        vm.prank(OWNER);
+        marketplace.listItem("Apple", 2e18, 1);
+        _;
+    }
+
+    // ---------------------
+    // buy modifier
+    // ---------------------
+    modifier buy() {
+        vm.prank(BUYER);
+        vm.deal(BUYER, 10e18);
+        marketplace.buyItem{value: 2e18}(0, 1);
+        _;
+    }
+
+    // ---------------------
     // Test listItem Success
     // ---------------------
-
     function test_ListingOneItem() public {
         vm.prank(OWNER);
         marketplace.listItem("Apple", 1e18, 10);
@@ -48,7 +66,6 @@ contract MarketplaceTest is Test {
     // ---------------------
     // Test listItem Failure
     // ---------------------
-
     function test_Revert_NoOwnerListing() public {
         vm.prank(BUYER);
         vm.expectRevert(Marketplace.NotTheOwner.selector);
@@ -58,7 +75,6 @@ contract MarketplaceTest is Test {
     // ---------------------
     // Test buyItem Success
     // ---------------------
-
     function test_buyItem_EmitsEvent() public {
         vm.prank(OWNER);
         marketplace.listItem("Apple", 1e18, 10);
@@ -84,13 +100,6 @@ contract MarketplaceTest is Test {
     // ---------------------
     // Test buyItem Failure
     // ---------------------
-
-       modifier list() {
-        vm.prank(OWNER);
-        marketplace.listItem("Apple", 2e18, 1);
-        _;
-    }
-
     function test_Revert_InavidId() public list {
         vm.prank(BUYER);
         vm.deal(BUYER, 2e18);
@@ -116,10 +125,93 @@ contract MarketplaceTest is Test {
         vm.deal(BUYER, 15e18);
         vm.startPrank(BUYER);
         marketplace.buyItem{value: 2e18}(0, 1);
-        
+
         // Try buying again, now it's sold out
         vm.expectRevert(Marketplace.ItemsoldOut.selector);
         marketplace.buyItem{value: 2e18}(0, 1);
         vm.stopPrank();
-    }   
+    }
+
+    // ---------------------
+    // Test refund Success
+    // ---------------------
+    function test_GetRefund_And_EmitEvent() public list buy {
+        vm.startPrank(BUYER);
+        assertEq(marketplace.balances(BUYER), 2e18);
+        vm.expectEmit(true, false, false, true);
+        emit Marketplace.Refunded(BUYER, 0, 1, 2e18);
+        marketplace.refund(0, 1);
+        vm.stopPrank();
+    }
+
+    function test_ContractBalance() public list buy {
+        vm.startPrank(BUYER);
+        uint256 balanceBefore = address(marketplace).balance;
+        marketplace.refund(0, 1);
+        uint256 balanceAfter = address(marketplace).balance;
+        assertEq(balanceBefore - balanceAfter, 2e18);
+        vm.stopPrank();
+    }
+
+    function test_refund_And_RestoresItemQuantity() public list buy {
+        vm.startPrank(BUYER);
+        marketplace.refund(0, 1);
+        (,, uint256 quantityAfter) = marketplace.items(0);
+        assertEq(quantityAfter, 1);
+        vm.stopPrank();
+    }
+
+    // ---------------------
+    // Test refund Failure
+    // ---------------------
+    function test_Revert_ZeroBalance() public list {
+        vm.startPrank(BUYER);
+        vm.expectRevert(Marketplace.NothingToRefund.selector);
+        marketplace.refund(0, 1);
+        vm.stopPrank();
+    }
+
+    function test_Revert_InsuffcientBalance() public list buy {
+        vm.startPrank(BUYER);
+        vm.expectRevert(Marketplace.NotEnoughBalance.selector);
+        marketplace.refund(0, 0.5 ether);
+        vm.stopPrank();
+    }
+
+    // ---------------------
+    // Test withdraw Success
+    // ---------------------
+    function test_Withdraw_And_EmitEvent() public list buy {
+        vm.startPrank(OWNER);
+        uint256 contractBalanceBefore = address(marketplace).balance;
+        uint256 ownerBalanceBefore = address(OWNER).balance;
+
+        // Emit event
+        vm.expectEmit(true, false, false, true);
+        emit Marketplace.withdrawn(OWNER, 2e18);
+        marketplace.withdraw();
+        
+        // Check balances
+        uint256 contractBalanceAfter = address(marketplace).balance;
+        uint256 ownerBalanceAfter = address(OWNER).balance;
+        assertEq(contractBalanceAfter, 0);
+        assertEq(ownerBalanceAfter, ownerBalanceBefore + contractBalanceBefore);
+        vm.stopPrank();
+    }
+
+    // ---------------------
+    // Test withdraw Failure
+    // ---------------------
+    function test_Revert_MultipleWithdraw() public list buy {
+        vm.startPrank(OWNER);
+        marketplace.withdraw();
+        vm.expectRevert(Marketplace.NothingToWithdraw.selector);
+        marketplace.withdraw();
+    }
+
+    function test_Revert_NonOwnerWithdraw() public list buy {
+        vm.startPrank(BUYER);
+        vm.expectRevert(Marketplace.NotTheOwner.selector);
+        marketplace.withdraw();
+    }
 }
